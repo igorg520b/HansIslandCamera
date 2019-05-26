@@ -3,7 +3,7 @@ void CallHomeIfNeeded()
   // time elapsed since last call home
   unsigned long elapsed = millis() - lastCallHome;
   // if it's time, call home
-  if(elapsed >= callHomeIntervalMilliseconds) CallHomeNow();
+  if(elapsed >= callHomeInterval) CallHomeNow();
 }
 
 uint8_t rxbuffer[50]; // incoming message
@@ -56,7 +56,7 @@ void ParseIncomingMessage(char *msg) {
   unsigned long tmp = (unsigned long)atol(msg);
   if(!tmp) return;
 
-  shutterIntervalMilliseconds = tmp;
+  shutterInterval = tmp;
 
   char *firstOccurrence = strchr(msg,(int)' ');
   if(firstOccurrence) {
@@ -64,6 +64,6 @@ void ParseIncomingMessage(char *msg) {
     tmp = (unsigned long)atol(firstOccurrence);
 
     if(tmp >= MIN_CALL_HOME_INTERVAL && tmp <= MAX_CALL_HOME_INTERVAL)
-      callHomeIntervalMilliseconds = tmp;
+      callHomeInterval = tmp;
   }
 }

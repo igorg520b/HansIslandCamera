@@ -1,5 +1,5 @@
-#include <IridiumSBD.h>
 #include <Adafruit_SleepyDog.h>
+#include <IridiumSBD.h>
 
 // all time intervals are in milliseconds for consistency
 #define SHUTTER_TRIGGER_PIN 6                  // shutter trigger pin
