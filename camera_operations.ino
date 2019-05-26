@@ -1,23 +1,26 @@
-
-
-void TriggerShutterIfNeeded() 
+void TriggerShutterIfNeeded()
 {
     // see how much time elapsed since last exchange session
-  unsigned long now = millis();
-  unsigned long interval = now - lastShutter;
-  unsigned long shutterIntervalMilliseconds = shutterInterval * 1000;
+  unsigned long elapsed = millis() - lastShutter;
 
-  // communicate when the time comes
-  if(interval >= shutterIntervalMilliseconds) {
+  // trigger when the time comes
+  if(elapsed >= shutterInterval) {
     TriggerShutterNow();
+  } else {
+    unsigned long timeUntilTrigger = shutterInterval - elapsed;
+    // if short period of time remains before camera trigger, then just wait
+    if(timeUntilTrigger < 200) {
+      delay(timeUntilTrigger);
+      TriggerShutterNow();
+    }
   }
 }
 
-void TriggerShutterNow() 
+void TriggerShutterNow()
 {
   lastShutter = millis();
-  digitalWrite(SHUTTER_TRIGGER, LOW); 
-  delay(500);
-  digitalWrite(SHUTTER_TRIGGER, HIGH);
   photoCounter++;
+  digitalWrite(SHUTTER_TRIGGER_PIN, LOW);
+  delay(200);
+  digitalWrite(SHUTTER_TRIGGER_PIN, HIGH);
 }

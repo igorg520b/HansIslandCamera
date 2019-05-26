@@ -1,48 +1,69 @@
-unsigned int processedMessages = 0; // number of processed messages before response is sent
-int lastMessageParseResult = 0;     // result code for the last message, equals to the number of reset parameters 
-
-void CallHomeIfNeeded() 
+void CallHomeIfNeeded()
 {
-  // see how much time elapsed since last exchange session
-  unsigned long now = millis();
-  unsigned long interval = now - lastCallHome;
-  unsigned long callHomeIntervalMilliseconds = callHomeInterval * 60000;
-
-  // communicate when the time comes
-  if(interval >= callHomeIntervalMilliseconds) {
-    CallHomeNow();
-  }
+  // time elapsed since last call home
+  unsigned long elapsed = millis() - lastCallHome;
+  // if it's time, call home
+  if(elapsed >= callHomeIntervalMilliseconds) CallHomeNow();
 }
 
-void CallHomeNow() 
-{
-    lastCallHome = millis();
-  // exchange messages
+uint8_t rxbuffer[50]; // incoming message
+char message[50];     // outgoing message
 
-  // if successful:
+void CallHomeNow()
+{
+  // wake up modem
+  int status = modem.begin();
+  if (status != ISBD_SUCCESS)
+  {
+    modemError = true;
+    return;
+  } else modemError = false;
+
+  bool doneCommunicating = false; // done when there are no incoming messages
+  do
+  {
+    // create outbound message
+    snprintf(message, sizeof(message), "%lu %lu %lu", shutterInterval, callHomeInterval, photoCounter);
+
+    // first send/receive
+    size_t rxBufferSize = sizeof(rxbuffer);
+    status = modem.sendReceiveSBDText(message, rxbuffer, rxBufferSize);
+    if (status != ISBD_SUCCESS) { modemError = true; return; }
+
+    if(rxBufferSize)
+    {
+      // we have an inbound message
+      // check if there are newer messages
+      while(modem.getWaitingMessageCount() > 0) {
+        // discard messages except for the newest one
+        rxBufferSize = sizeof(rxbuffer);
+        status = modem.sendReceiveSBDText(NULL, rxbuffer, rxBufferSize);
+        if (status != ISBD_SUCCESS) { modemError = true; return; }
+      }
+      if(!rxBufferSize) { modemError = true; return; } // not supposed to happen
+      // process message
+      ParseIncomingMessage((char*)rxbuffer);
+    } else doneCommunicating = true;
+
+  } while(!doneCommunicating);
+  // done
+  modem.sleep();
+  lastCallHome = millis();
 }
 
-void parseMessage(char *msg) {
-#ifdef TRACE
-  Serial.print("parsing message: ");
-  Serial.println(msg);
-#endif // TRACE
 
-  lastMessageParseResult = 0;
-  unsigned long tmp = atoi(msg);
+void ParseIncomingMessage(char *msg) {
+  unsigned long tmp = (unsigned long)atol(msg);
   if(!tmp) return;
-  
-  shutterInterval = tmp;
-  lastMessageParseResult = 1;
- 
+
+  shutterIntervalMilliseconds = tmp;
+
   char *firstOccurrence = strchr(msg,(int)' ');
   if(firstOccurrence) {
     firstOccurrence++;
-    tmp = atoi(firstOccurrence);
+    tmp = (unsigned long)atol(firstOccurrence);
 
-    if(tmp >= MIN_CALL_HOME_INTERVAL && tmp <= MAX_CALL_HOME_INTERVAL) {
-      callHomeInterval = tmp;
-      lastMessageParseResult = 2;
-    }
+    if(tmp >= MIN_CALL_HOME_INTERVAL && tmp <= MAX_CALL_HOME_INTERVAL)
+      callHomeIntervalMilliseconds = tmp;
   }
 }

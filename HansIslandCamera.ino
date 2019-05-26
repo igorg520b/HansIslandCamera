@@ -1,31 +1,47 @@
 #include <IridiumSBD.h>
 #include <Adafruit_SleepyDog.h>
 
-#define TRACE                          // verbose output to serial
-#define SHUTTER_TRIGGER 6              // shutter trigger pin
-#define ROCKBLOCK_SLEEP 5              // model sleep pin
-#define LED 13
-#define MAX_CALL_HOME_INTERVAL 2880    // in minutes; call home at least once in 48 hours
-#define MIN_CALL_HOME_INTERVAL 15      // in minutes; 
+// all time intervals are in milliseconds for consistency
+#define SHUTTER_TRIGGER_PIN 6                  // shutter trigger pin
+#define ROCKBLOCK_SLEEP_PIN 5                  // model sleep pin
+#define LED_PIN 13
+#define MAX_CALL_HOME_INTERVAL (48*60*60000)
+#define MIN_CALL_HOME_INTERVAL (15*60000)
+#define WATCHDOG_TIMEOUT 30000 // 16-bit signed int
 
-IridiumSBD modem(Serial1);
+IridiumSBD modem(Serial1, ROCKBLOCK_SLEEP_PIN);
 
-unsigned long shutterInterval = 10;    // interval between taking photos in seconds
-unsigned long callHomeInterval = 20;   // interval between modem data exchanges in minutes(!)
-unsigned long lastShutter = 0;  // in milliseconds
-unsigned long lastCallHome = 0;        // in milliseconds
-unsigned long photoCounter = 0;        // count shutter triggers 
-
+unsigned long shutterInterval = 10000;
+unsigned long callHomeInterval = 1200000;
+unsigned long lastShutter = 0;             // in milliseconds
+unsigned long lastCallHome = 0;            // in milliseconds
+unsigned long photoCounter = 0;            // count shutter triggers
+bool modemError = false;                   // indicates that the modem is not working as expected
 
 void setup() {
-  pinMode(LED, OUTPUT);
-  pinMode(SHUTTER_TRIGGER, OUTPUT);
-  pinMode(ROCKBLOCK_SLEEP, OUTPUT);
-  CallHomeNow();
+  Watchdog.enable(WATCHDOG_TIMEOUT);
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(SHUTTER_TRIGGER_PIN, OUTPUT);
+  modem.setPowerProfile(IridiumSBD::USB_POWER_PROFILE);
+
   TriggerShutterNow();
+  CallHomeNow();
 }
 
 void loop() {
+  Watchdog.reset();
   TriggerShutterIfNeeded();
   CallHomeIfNeeded();
+  BlinkLED();
+}
+
+bool ISBDCallback() {
+  Watchdog.reset();
+  TriggerShutterIfNeeded();
+  BlinkLED();
+}
+
+void BlinkLED() {
+  if(modemError) digitalWrite(LED_PIN, (millis()/100 % 2) ? HIGH : LOW); // fast blink
+  else digitalWrite(LED_PIN, (millis()/1000 % 2) ? HIGH : LOW); // slow blink
 }
