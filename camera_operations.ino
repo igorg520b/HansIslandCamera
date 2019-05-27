@@ -21,12 +21,14 @@ void TriggerShutterNow()
   lastShutter = millis();
   photoCounter++;
 #ifdef DEBUG
-  Serial.print("triggering shutter ");
-  Serial.print(modemError);
-  Serial.print(" ");
-  Serial.println(photoCounter);
+  Serial.print("*");
+  if(photoCounter % 100)
+  {
+    Serial.print("\npictures taken: ");
+    Serial.println(photoCounter);
+  }
 #endif
   digitalWrite(SHUTTER_TRIGGER_PIN, LOW);
-  delay(200);
+  delay(200); // this delay is specific to DigiSnap contorller
   digitalWrite(SHUTTER_TRIGGER_PIN, HIGH);
 }
