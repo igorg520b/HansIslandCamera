@@ -2,7 +2,6 @@
 #include <IridiumSBD.h>
 
 // all time intervals are in milliseconds for consistency
-#define DEBUG
 #define SHUTTER_TRIGGER_PIN 6                  // shutter trigger pin
 #define ROCKBLOCK_SLEEP_PIN 5                  // model sleep pin
 #define LED_PIN 13
@@ -22,16 +21,10 @@ int signalQuality = -1;
 
 void setup() {
   Watchdog.enable(WATCHDOG_TIMEOUT);
-#ifdef DEBUG
-  delay(3000);
-  Serial.println("setup()");
-#endif
-
   Serial1.begin(19200);
   pinMode(LED_PIN, OUTPUT);
   pinMode(SHUTTER_TRIGGER_PIN, OUTPUT);
   modem.setPowerProfile(IridiumSBD::USB_POWER_PROFILE);
-
   TriggerShutterNow();
   CallHomeNow();
 }
