@@ -21,8 +21,10 @@ void TriggerShutterNow()
   lastShutter = millis();
   photoCounter++;
 #ifdef DEBUG
-  Serial.print("triggering shutter ")
-  Serial.println(photCounter);
+  Serial.print("triggering shutter ");
+  Serial.print(modemError);
+  Serial.print(" ");
+  Serial.println(photoCounter);
 #endif
   digitalWrite(SHUTTER_TRIGGER_PIN, LOW);
   delay(200);

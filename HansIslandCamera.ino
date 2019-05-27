@@ -18,11 +18,15 @@ unsigned long lastShutter = 0;             // in milliseconds
 unsigned long lastCallHome = 0;            // in milliseconds
 unsigned long photoCounter = 0;            // count shutter triggers
 bool modemError = false;                   // indicates that the modem is not working as expected
+int signalQuality = -1;
 
 void setup() {
-#ifndef DEBUG  
-  Watchdog.enable(WATCHDOG_TIMEOUT);
-#endif  
+//  Watchdog.enable(WATCHDOG_TIMEOUT);
+#ifdef DEBUG  
+  delay(3000);
+#endif
+
+
   Serial1.begin(19200);
   pinMode(LED_PIN, OUTPUT);
   pinMode(SHUTTER_TRIGGER_PIN, OUTPUT);
@@ -33,16 +37,17 @@ void setup() {
 }
 
 void loop() {
-  Watchdog.reset();
+//  Watchdog.reset();
   TriggerShutterIfNeeded();
   CallHomeIfNeeded();
   BlinkLED();
 }
 
 bool ISBDCallback() {
-  Watchdog.reset();
+//  Watchdog.reset();
   TriggerShutterIfNeeded();
   BlinkLED();
+  return true;
 }
 
 void BlinkLED() {

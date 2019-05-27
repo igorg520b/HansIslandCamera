@@ -12,6 +12,9 @@ char message[50];     // outgoing message
 void CallHomeNow()
 {
   // wake up modem
+    #ifdef DEBUG
+    Serial.println("waking up modem");
+    #endif
   int status = modem.begin();
   if (status != ISBD_SUCCESS)
   {
@@ -23,6 +26,13 @@ void CallHomeNow()
     return;
   } else modemError = false;
 
+    #ifdef DEBUG
+  status = modem.getSignalQuality(signalQuality);
+  if(status != ISBD_SUCCESS) {
+    Serial.println("signal quality could not be obtained");
+  }
+    #endif
+
   bool doneCommunicating = false; // done when there are no incoming messages
   do
   {
@@ -31,8 +41,32 @@ void CallHomeNow()
 
     // first send/receive
     size_t rxBufferSize = sizeof(rxbuffer);
+    #ifdef DEBUG
+  int status = modem.getSignalQuality(signalQuality);
+  if(status != ISBD_SUCCESS) {
+    Serial.println("signal quality could not be obtained");
+  } else {
+    Serial.print("signal quality ");
+    Serial.println(signalQuality);
+    }
+    Serial.println("sendReceiveSBDText");
+    #endif
     status = modem.sendReceiveSBDText(message, rxbuffer, rxBufferSize);
-    if (status != ISBD_SUCCESS) { modemError = true; return; }
+    if (status != ISBD_SUCCESS) 
+    { 
+      modemError = true;
+    #ifdef DEBUG
+    Serial.print("sendReceiveSBDText returned ");
+    Serial.println(status);
+    #endif
+             
+      return; 
+    } else 
+    {
+    #ifdef DEBUG
+    Serial.println("communication succeeded");
+    #endif
+    }
 
     if(rxBufferSize)
     {
@@ -51,6 +85,9 @@ void CallHomeNow()
 
   } while(!doneCommunicating);
   // done
+    #ifdef DEBUG
+    Serial.println("modem sleep");
+    #endif
   modem.sleep();
   lastCallHome = millis();
 }
