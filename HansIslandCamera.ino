@@ -13,7 +13,7 @@
 IridiumSBD modem(Serial1, ROCKBLOCK_SLEEP_PIN);
 
 unsigned long shutterInterval = 10000;
-unsigned long callHomeInterval = 15*60000;
+unsigned long callHomeInterval = 7*60000;
 unsigned long lastShutter = 0;             // last time of shutter trigger
 unsigned long lastCallHome = 0;            // last time of call home
 unsigned long photoCounter = 0;            // count shutter triggers

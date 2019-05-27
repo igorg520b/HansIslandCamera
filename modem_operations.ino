@@ -40,7 +40,7 @@ void CallHomeNow()
     size_t rxBufferSize = sizeof(rxbuffer);
 #ifdef DEBUG
     Serial.print("rxBufferSize = ");
-    Seria.println(rxBufferSize);
+    Serial.println(rxBufferSize);
     status = modem.getSignalQuality(signalQuality);
     if(status != ISBD_SUCCESS)
     {

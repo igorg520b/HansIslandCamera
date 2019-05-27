@@ -22,7 +22,7 @@ void TriggerShutterNow()
   photoCounter++;
 #ifdef DEBUG
   Serial.print("*");
-  if(photoCounter % 100)
+  if(photoCounter % 100==0)
   {
     Serial.print("\npictures taken: ");
     Serial.println(photoCounter);
