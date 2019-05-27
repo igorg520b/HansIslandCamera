@@ -2,6 +2,7 @@
 #include <IridiumSBD.h>
 
 // all time intervals are in milliseconds for consistency
+#define DEBUG
 #define SHUTTER_TRIGGER_PIN 6                  // shutter trigger pin
 #define ROCKBLOCK_SLEEP_PIN 5                  // model sleep pin
 #define LED_PIN 13
@@ -19,7 +20,10 @@ unsigned long photoCounter = 0;            // count shutter triggers
 bool modemError = false;                   // indicates that the modem is not working as expected
 
 void setup() {
+#ifndef DEBUG  
   Watchdog.enable(WATCHDOG_TIMEOUT);
+#endif  
+  Serial1.begin(19200);
   pinMode(LED_PIN, OUTPUT);
   pinMode(SHUTTER_TRIGGER_PIN, OUTPUT);
   modem.setPowerProfile(IridiumSBD::USB_POWER_PROFILE);

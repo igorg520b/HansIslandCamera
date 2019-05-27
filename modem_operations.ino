@@ -16,6 +16,10 @@ void CallHomeNow()
   if (status != ISBD_SUCCESS)
   {
     modemError = true;
+    #ifdef DEBUG
+    Serial.print("modem.begin() returned ");
+    Serial.println(status);
+    #endif
     return;
   } else modemError = false;
 
