@@ -1,5 +1,5 @@
 #include <DS3232RTC.h>
-#include <IridiumSBD.h>
+#include "IridiumSBD.h"
 
 // all time intervals are in seconds
 #define SHUTTER_TRIGGER_PIN 6                  // shutter trigger pin
