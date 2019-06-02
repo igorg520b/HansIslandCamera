@@ -15,8 +15,8 @@
 IridiumSBD modem(Serial1, ROCKBLOCK_SLEEP_PIN);
 DS3232RTC myRTC(false); 
 
-unsigned long shutterInterval = 365*24*3600;   // once a year
-unsigned long callHomeInterval = 120*60;       // once in two hours
+unsigned long shutterInterval = 24*3600;   // once a day
+unsigned long callHomeInterval = 30*60;       // once in 30 min
 bool intervalChanged = true;               // if received a command to change the interval
 unsigned long photoCounter = 0;            // count shutter triggers
 bool modemError = false;                   // indicates that the modem's library returned error
@@ -62,7 +62,7 @@ void loop() {
   if(nowTime >= (lastCallHome + callHomeInterval)) CallHomeNow();
 
   // indicate current status
-  SignalLED();
+  SignalLED(false);
 }
 
 void setNextAlarm() {
@@ -92,7 +92,7 @@ bool ISBDCallback() {
     setNextAlarm();
   }
    
-  SignalLED();
+  SignalLED(true);
   return true;
 }
 
@@ -104,19 +104,22 @@ void TriggerShutterNow()
   digitalWrite(SHUTTER_TRIGGER_PIN, HIGH);
 }
 
-void SignalLED() {
-  // one blink per ~11 seconds - normal operation
-  // two blinks - modem error or no reception
-  // three blinks - RTC error
-  unsigned long blinkInterval = 11;
+void SignalLED(bool modemActive) {
+  // blinking interval ~10 seconds - normal/sleep
+  // interval ~1 second - active modem
+  // steady on - modem error/can't connect
+  unsigned long blinkInterval = 10;
   unsigned long turnOffAfter = 3600;
 
-  if(nowTime < (initializeTime + turnOffAfter) && nowTime > (lastLEDSignal + blinkInterval)) {
-    blink();
-    if(modemError) blink();
+  if(nowTime < (initializeTime + turnOffAfter) && 
+  (nowTime > (lastLEDSignal + blinkInterval) || 
+  (modemActive && nowTime > (lastLEDSignal + 1)))) {
+    if(modemError) digitalWrite(LED_PIN, HIGH);
+    else blink();
     lastLEDSignal = nowTime;
   }
 }
+
 
 void blink() {
   delay(100);
