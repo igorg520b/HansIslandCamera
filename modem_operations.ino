@@ -1,11 +1,3 @@
-void CallHomeIfNeeded()
-{
-  // time elapsed since last call home
-  unsigned long elapsed = millis() - lastCallHome;
-  // if it's time, call home
-  if(elapsed >= callHomeInterval) CallHomeNow();
-}
-
 uint8_t rxbuffer[50]; // incoming message
 char message[50];     // outgoing message
 
@@ -24,7 +16,7 @@ void CallHomeNow()
   do
   {
     // create outbound message
-    snprintf(message, sizeof(message), "%lu %lu %lu", shutterInterval, callHomeInterval, photoCounter);
+    snprintf(message, sizeof(message), "%lu %lu %lu %d", shutterInterval, callHomeInterval, photoCounter, myRTC.temperature()/4);
 
     // first send/receive
     size_t rxBufferSize = sizeof(rxbuffer);
@@ -63,15 +55,16 @@ void CallHomeNow()
   } while(!doneCommunicating);
   // done
   modem.sleep();
-  lastCallHome = millis();
+  lastCallHome = myRTC.get();
 }
-
 
 void ParseIncomingMessage(char *msg) {
   unsigned long tmp = (unsigned long)atol(msg);
   if(!tmp) return; // atol failed
-  if(tmp<1000) tmp = 1000; // value too small
-  shutterInterval = tmp;
+  if(shutterInterval != tmp) {
+    shutterInterval = tmp;
+    intervalChanged = true;
+  }
   char *firstOccurrence = strchr(msg,(int)' ');
   if(firstOccurrence) {
     firstOccurrence++;

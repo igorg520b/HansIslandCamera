@@ -1,49 +1,126 @@
-#include <Adafruit_SleepyDog.h>
 #include <IridiumSBD.h>
+#include <DS3232RTC.h>
 
-// all time intervals are in milliseconds for consistency
+// all time intervals are in seconds
 #define SHUTTER_TRIGGER_PIN 6                  // shutter trigger pin
 #define ROCKBLOCK_SLEEP_PIN 5                  // model sleep pin
 #define LED_PIN 13
-#define MAX_CALL_HOME_INTERVAL (48*60*60000)
-#define MIN_CALL_HOME_INTERVAL (15*60000)
-#define WATCHDOG_TIMEOUT 30000 // 16-bit signed int
+#define RTC_INT_PIN   12
+
+// intervals
+#define MAX_CALL_HOME_INTERVAL (7*24*3600) // one week
+#define MIN_CALL_HOME_INTERVAL (15*60)     // 15 minutes
+#define LENGTH_OF_DEEP_SLEEP 11 // upper bound of deep sleep duration
 
 IridiumSBD modem(Serial1, ROCKBLOCK_SLEEP_PIN);
+DS3232RTC myRTC(false); 
 
-unsigned long shutterInterval = 10000;
-unsigned long callHomeInterval = 7*60000;
-unsigned long lastShutter = 0;             // last time of shutter trigger
-unsigned long lastCallHome = 0;            // last time of call home
+unsigned long shutterInterval = 365*24*3600;   // once a year
+unsigned long callHomeInterval = 120*60;       // once in two hours
+bool intervalChanged = true;               // if received a command to change the interval
 unsigned long photoCounter = 0;            // count shutter triggers
 bool modemError = false;                   // indicates that the modem's library returned error
-int signalQuality = -1;
+time_t initializeTime, alarmTime;     // initial time at reset (does not change) and time of next alarm
+time_t nowTime;
+time_t lastCallHome, lastLEDSignal;
+int temperatureReading;                    // RTC thermometer reading
 
 void setup() {
-  Watchdog.enable(WATCHDOG_TIMEOUT);
   Serial1.begin(19200);
   pinMode(LED_PIN, OUTPUT);
-  pinMode(SHUTTER_TRIGGER_PIN, OUTPUT);
+  pinMode(SHUTTER_TRIGGER_PIN, OUTPUT); // for camera shutter
+  pinMode(RTC_INT_PIN, INPUT_PULLUP);   // external RTC alarm signal
+
+  // set up RTC
+  myRTC.begin();
+  myRTC.alarmInterrupt(ALARM_1, true);
+  lastLEDSignal = initializeTime = myRTC.get();
+  
+  // watchdog and sleep timer
+  initializeWDT();
+  enableWatchdog();
+
+  // modem
   modem.setPowerProfile(IridiumSBD::USB_POWER_PROFILE);
-  TriggerShutterNow();
   CallHomeNow();
 }
 
 void loop() {
-  Watchdog.reset();
-  TriggerShutterIfNeeded();
-  CallHomeIfNeeded();
-  BlinkLED();
+  resetWD();  // reset watchdog
+  nowTime = myRTC.get(); // get current time from external RTC
+
+  // trigger shutter if (1) alarm goes off or (2) missed the alarm or (3) interval changed
+  if (!digitalRead(RTC_INT_PIN) || nowTime >= alarmTime || intervalChanged)
+  {
+    TriggerShutterNow();
+    setNextAlarm();
+  } else if((nowTime + LENGTH_OF_DEEP_SLEEP) < alarmTime) {
+    sleepWell(); // deep sleep ~10 seconds
+  } 
+
+  // call home if needed
+  if(nowTime >= (lastCallHome + callHomeInterval)) CallHomeNow();
+
+  // indicate current status
+  SignalLED();
+}
+
+void setNextAlarm() {
+  myRTC.alarm(ALARM_1);
+
+  // tentative time for the next alarm
+  alarmTime += shutterInterval; 
+
+  // if the interval was changed or we already missed the next alarm
+  if(intervalChanged || alarmTime <= myRTC.get()) {
+    // start with a new reference point
+    alarmTime = myRTC.get() + shutterInterval;
+    intervalChanged = false; // the chage was just processed
+  }
+  myRTC.setAlarm(ALM1_MATCH_DATE, second(alarmTime), minute(alarmTime), hour(alarmTime), day(alarmTime)); // Set alarm
 }
 
 bool ISBDCallback() {
-  Watchdog.reset();
-  TriggerShutterIfNeeded();
-  BlinkLED();
+  resetWD(); // reset watchdog
+
+  // trigger shutter if needed
+  nowTime = myRTC.get(); // get current time from external RTC
+  // trigger shutter if (1) alarm goes off or (2) missed the alarm or (3) interval changed
+  if (!digitalRead(RTC_INT_PIN) || nowTime >= alarmTime || intervalChanged)
+  {
+    TriggerShutterNow();
+    setNextAlarm();
+  }
+   
+  SignalLED();
   return true;
 }
 
-void BlinkLED() {
-  if(modemError) digitalWrite(LED_PIN, (millis()/100 % 2) ? HIGH : LOW); // fast blink
-  else digitalWrite(LED_PIN, (millis()/1000 % 2) ? HIGH : LOW); // slow blink
+void TriggerShutterNow()
+{
+  photoCounter++;
+  digitalWrite(SHUTTER_TRIGGER_PIN, LOW);
+  delay(200); // this delay is specific to DigiSnap contorller
+  digitalWrite(SHUTTER_TRIGGER_PIN, HIGH);
+}
+
+void SignalLED() {
+  // one blink per ~11 seconds - normal operation
+  // two blinks - modem error or no reception
+  // three blinks - RTC error
+  unsigned long blinkInterval = 11;
+  unsigned long turnOffAfter = 3600;
+
+  if(nowTime < (initializeTime + turnOffAfter) && nowTime > (lastLEDSignal + blinkInterval)) {
+    blink();
+    if(modemError) blink();
+    lastLEDSignal = nowTime;
+  }
+}
+
+void blink() {
+  delay(100);
+  digitalWrite(LED_PIN, HIGH);
+  delay(150);
+  digitalWrite(LED_PIN, LOW);
 }
