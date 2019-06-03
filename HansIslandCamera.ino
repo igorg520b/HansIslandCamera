@@ -56,6 +56,7 @@ void loop() {
     setNextAlarm();
   } else if((nowTime + LENGTH_OF_DEEP_SLEEP) < alarmTime) {
     sleepWell(); // deep sleep ~10 seconds
+    resetWD();  // reset watchdog
   } 
 
   // call home if needed
@@ -126,4 +127,5 @@ void blink() {
   digitalWrite(LED_PIN, HIGH);
   delay(150);
   digitalWrite(LED_PIN, LOW);
+  resetWD();  // reset watchdog
 }

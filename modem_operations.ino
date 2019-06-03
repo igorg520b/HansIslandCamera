@@ -26,13 +26,15 @@ void CallHomeNow()
       modemError = true;
       return;
     }
-
+    resetWD();  // reset watchdog
+    
     if(rxBufferSize)
     {
       // we have an inbound message
       // check if there are newer messages
       while(modem.getWaitingMessageCount() > 0) 
       {
+        resetWD();  // reset watchdog
         // discard messages except for the newest one
         rxBufferSize = sizeof(rxbuffer);
         status = modem.sendReceiveSBDText(NULL, rxbuffer, rxBufferSize);
@@ -41,6 +43,7 @@ void CallHomeNow()
           modemError = true;
           return;
         }
+        resetWD();  // reset watchdog
       }
       if(!rxBufferSize)
       {
