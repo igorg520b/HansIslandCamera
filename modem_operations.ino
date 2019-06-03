@@ -3,6 +3,7 @@ char message[50];     // outgoing message
 
 void CallHomeNow()
 {
+  lastCallHome = myRTC.get();
   // wake up modem
   int status = modem.begin();
   if (status != ISBD_SUCCESS)
@@ -20,6 +21,8 @@ void CallHomeNow()
 
     // first send/receive
     size_t rxBufferSize = sizeof(rxbuffer);
+    memset((void*)rxbuffer,0, rxBufferSize); 
+    rxBufferSize--;
     status = modem.sendReceiveSBDText(message, rxbuffer, rxBufferSize);
     if (status != ISBD_SUCCESS)
     {
@@ -30,6 +33,7 @@ void CallHomeNow()
     
     if(rxBufferSize)
     {
+      rxbuffer[rxBufferSize] = 0; // not sure, but it seems that sendReceiveSBDText does not zero-terminate the received array
       // we have an inbound message
       // check if there are newer messages
       while(modem.getWaitingMessageCount() > 0) 
@@ -37,6 +41,8 @@ void CallHomeNow()
         resetWD();  // reset watchdog
         // discard messages except for the newest one
         rxBufferSize = sizeof(rxbuffer);
+        memset((void*)rxbuffer,0, rxBufferSize); 
+        rxBufferSize--;
         status = modem.sendReceiveSBDText(NULL, rxbuffer, rxBufferSize);
         if (status != ISBD_SUCCESS)
         {
@@ -50,7 +56,9 @@ void CallHomeNow()
          // not supposed to happen
         modemError = true;
         return;
-      }
+      } else {
+        rxbuffer[rxBufferSize] = 0; // not sure, but it seems that sendReceiveSBDText does not zero-terminate the received array
+        }
       // process message
       ParseIncomingMessage((char*)rxbuffer);
     } else doneCommunicating = true;
