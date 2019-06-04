@@ -19,7 +19,6 @@ DS3232RTC myRTC(false);
 // Global variable delcarations
 bool            intervalChanged             = true;           // If received a command to change the interval
 bool            modemError                  = false;          // Indicates that the modem's library returned error
-int             temperatureReading          = 0;              // RTC thermometer reading
 unsigned long   shutterInterval             = 24UL*3600UL;    // Once a day
 unsigned long   callHomeInterval            = 120*60;          // Message exchange default interval
 unsigned long   photoCounter                = 0;              // Count shutter triggers
