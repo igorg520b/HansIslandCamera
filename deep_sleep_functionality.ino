@@ -1,3 +1,5 @@
+bool sleeping = false;
+
 void initializeWDT() {
         // One-time initialization of watchdog timer.
     // Generic clock generator 2, divisor = 32 (2^(DIV+1))
@@ -49,12 +51,14 @@ void sleepWell() {
   // Don't fully power down flash when in sleep
   NVMCTRL->CTRLB.bit.SLEEPPRM = NVMCTRL_CTRLB_SLEEPPRM_DISABLED_Val;
   SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-
+  sleeping = true;
   __DSB(); // Data sync to ensure outgoing memory accesses complete
   __WFI(); // Wait for interrupt (places device in sleep mode)
+  sleeping = false;
   // Code resumes here on wake (WDT early warning interrupt).
 }
 
 void WDT_Handler(void) {
-    WDT->INTFLAG.bit.EW  = 1;        // Clear interrupt flag
+  if(sleeping) resetWD();
+  WDT->INTFLAG.bit.EW  = 1;        // Clear interrupt flag
 }
