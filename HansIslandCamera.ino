@@ -122,7 +122,7 @@ void TriggerShutterNow()
 void SignalLED(bool modemActive) {
   // Blinking interval ~10 seconds  - Normal/sleep
   // Interval ~1 second             - Active modem
-  // Steady on                      - Modem error/can't connect
+  // Steady off                     - Modem error or past one hour since start
   unsigned long blinkInterval = 10;
   unsigned long turnOffAfter = 3600;
 
