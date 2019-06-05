@@ -1,6 +1,7 @@
 bool sleeping = false;
 
-void initializeWDT() {
+void InitializeWDT() 
+{
         // One-time initialization of watchdog timer.
     // Generic clock generator 2, divisor = 32 (2^(DIV+1))
     GCLK->GENDIV.reg = GCLK_GENDIV_ID(2) | GCLK_GENDIV_DIV(4);
@@ -23,7 +24,8 @@ void initializeWDT() {
     NVIC_EnableIRQ(WDT_IRQn);
 }
 
-int enableWatchdog() {
+int EnableWatchdog() 
+{
   WDT->CTRL.reg = 0; // Disable watchdog for config
   while(WDT->STATUS.bit.SYNCBUSY);
 
@@ -32,20 +34,22 @@ int enableWatchdog() {
   WDT->EWCTRL.bit.EWOFFSET = 0xA;
   while(WDT->STATUS.bit.SYNCBUSY); // Sync CTRL write
 
-  resetWD();
+  ResetWD();
   WDT->CTRL.bit.ENABLE = 1;            // Start watchdog now!
   while(WDT->STATUS.bit.SYNCBUSY);
 }
 
-void resetWD() {
+void ResetWD() 
+{
     // Write the watchdog clear key value (0xA5) to the watchdog
     // clear register to clear the watchdog timer and reset it.
     WDT->CLEAR.reg = WDT_CLEAR_CLEAR_KEY;
     while(WDT->STATUS.bit.SYNCBUSY);
 }
 
-void sleepWell() {
-  resetWD();
+void SleepWell() 
+{
+  ResetWD();
   // WDT must be enabled earlier
   // Enable standby sleep mode (deepest sleep) and activate.
   // Don't fully power down flash when in sleep
@@ -58,7 +62,8 @@ void sleepWell() {
   // Code resumes here on wake (WDT early warning interrupt).
 }
 
-void WDT_Handler(void) {
-  if(sleeping) resetWD();
+void WDT_Handler(void) 
+{
+  if(sleeping) ResetWD();          // Disable watchdog in sleep mode
   WDT->INTFLAG.bit.EW  = 1;        // Clear interrupt flag
 }

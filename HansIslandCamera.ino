@@ -46,8 +46,8 @@ void setup()
   lastLEDSignal = initializeTime = myRTC.get();
   
   // Watchdog and sleep timer
-  initializeWDT();
-  enableWatchdog();
+  InitializeWDT();
+  EnableWatchdog();
 
   // Modem
   modem.setPowerProfile(IridiumSBD::USB_POWER_PROFILE);
@@ -56,17 +56,19 @@ void setup()
 
 void loop() 
 {
-  resetWD();              // Reset watchdog
+  ResetWD();              // Reset watchdog
   nowTime = myRTC.get();  // Get current time from external RTC
 
   // Trigger shutter if (1) alarm goes off or (2) missed the alarm or (3) interval changed
   if (!digitalRead(RTC_INT_PIN) || nowTime >= alarmTime || intervalChanged)
   {
     TriggerShutterNow();
-    setNextAlarm();
-  } else if((nowTime + LENGTH_OF_DEEP_SLEEP) < alarmTime) {
-    sleepWell();  // Deep sleep ~10 seconds
-    resetWD();    // Reset watchdog
+    SetNextAlarm();
+  } 
+  else if((nowTime + LENGTH_OF_DEEP_SLEEP) < alarmTime) 
+  {
+    SleepWell();  // Deep sleep ~10 seconds
+    ResetWD();    // Reset watchdog
   } 
 
   // Call home if needed
@@ -74,9 +76,10 @@ void loop()
 
   // Indicate current status
   SignalLED(false);
+  ResetWD();  // Reset watchdog
 }
 
-void setNextAlarm() 
+void SetNextAlarm() 
 {
   myRTC.alarm(ALARM_1); // Ensure alarm 1 interrupt flag is cleared
 
@@ -95,7 +98,7 @@ void setNextAlarm()
 
 bool ISBDCallback() 
 {
-  resetWD(); // Reset watchdog
+  ResetWD(); // Reset watchdog
 
   // Trigger shutter if needed
   nowTime = myRTC.get(); // Get current time from external RTC
@@ -104,10 +107,11 @@ bool ISBDCallback()
   if (!digitalRead(RTC_INT_PIN) || nowTime >= alarmTime || intervalChanged)
   {
     TriggerShutterNow();
-    setNextAlarm();
+    SetNextAlarm();
   }
    
   SignalLED(true); // Signal that the modem is operating (rapid blinking)
+  ResetWD();  // Reset watchdog
   return true; // This callback must return true for modem to continue
 }
 
@@ -119,23 +123,24 @@ void TriggerShutterNow()
   digitalWrite(SHUTTER_TRIGGER_PIN, HIGH);
 }
 
-void SignalLED(bool modemActive) {
+void SignalLED(bool modemActive) 
+{
   // Blinking interval ~10 seconds  - Normal/sleep
   // Interval ~1 second             - Active modem
   // Steady off                     - Modem error or past one hour since start
   unsigned long blinkInterval = 10;
   unsigned long turnOffAfter = 3600;
 
-  if(nowTime < (initializeTime + turnOffAfter) && 
+  if(nowTime < (initializeTime + turnOffAfter) && !modemError &&
   (nowTime > (lastLEDSignal + blinkInterval) || 
   (modemActive && nowTime > (lastLEDSignal + 1)))) 
   {
-    if(!modemError) blink();
+    Blink();
     lastLEDSignal = nowTime;
   } 
 }
 
-void blink() 
+void Blink() 
 {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
@@ -143,5 +148,4 @@ void blink()
   digitalWrite(LED_BUILTIN, LOW);
   delay(100);
   pinMode(LED_BUILTIN, INPUT); // ***Set pin to INPUT when not in use***
-  resetWD();  // Reset watchdog
 }

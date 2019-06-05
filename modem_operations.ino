@@ -1,11 +1,11 @@
-uint8_t rxbuffer[50]; // incoming message
-char message[50];     // outgoing message
+uint8_t rxbuffer[50]; // Incoming message buffer
+char message[50];     // Outgoing message buffer
 
 void CallHomeNow()
 {
   lastCallHome = myRTC.get();
-  // wake up modem
-  int status = modem.begin();
+  
+  int status = modem.begin(); // Wake up modem
   if (status != ISBD_SUCCESS)
   {
     modemError = true;
@@ -13,33 +13,39 @@ void CallHomeNow()
   } 
   else modemError = false;
 
-  bool doneCommunicating = false; // done when there are no incoming messages
+  // (1) Report the current parameters, number of photos and the RTC sensor temperature.
+  // (2) There may be several incoming messages in the queue. Discard all but the most recent.
+  // If there are no incoming messages, terminate.
+  // (3) Parse the most recent message and go to step 1.
+  bool doneCommunicating = false; // Done when there are no incoming messages
   do
   {
-    // create outbound message
+    // Create the outbound message
     snprintf(message, sizeof(message), "%lu %lu %lu %d", shutterInterval, callHomeInterval, photoCounter, myRTC.temperature()/4);
 
-    // first send/receive
+    // Initial sending and receiving
     size_t rxBufferSize = sizeof(rxbuffer);
-    memset((void*)rxbuffer,0, rxBufferSize); 
-    rxBufferSize--;
+    memset((void*)rxbuffer,0, rxBufferSize); // Clear the received buffer 
+    rxBufferSize--; // The last byte is reserved for zero to terminate the string
     status = modem.sendReceiveSBDText(message, rxbuffer, rxBufferSize);
     if (status != ISBD_SUCCESS)
     {
       modemError = true;
       return;
     }
-    resetWD();  // reset watchdog
+    ResetWD();  // Reset watchdog
     
     if(rxBufferSize)
     {
-      rxbuffer[rxBufferSize] = 0; // not sure, but it seems that sendReceiveSBDText does not zero-terminate the received array
-      // we have an inbound message
-      // check if there are newer messages
+      // There is an inbound message
+      rxbuffer[rxBufferSize] = 0; // Terminate the received message with zero
+      
+      // Check if there are more messages in queue
       while(modem.getWaitingMessageCount() > 0) 
       {
-        resetWD();  // reset watchdog
-        // discard messages except for the newest one
+        ResetWD();  // Reset watchdog
+
+        // Discard all queued messages except the last one
         rxBufferSize = sizeof(rxbuffer);
         memset((void*)rxbuffer,0, rxBufferSize); 
         rxBufferSize--;
@@ -49,38 +55,59 @@ void CallHomeNow()
           modemError = true;
           return;
         }
-        resetWD();  // reset watchdog
+        ResetWD();  // Reset watchdog
       }
+
+      // At this point the last message should be in rxBuffer, and rxBufferSize should be >0
       if(!rxBufferSize)
       {
-         // not supposed to happen
+        // If the last message was not received, some sort of error occurred
         modemError = true;
         return;
-      } else {
-        rxbuffer[rxBufferSize] = 0; // not sure, but it seems that sendReceiveSBDText does not zero-terminate the received array
-        }
-      // process message
+      } 
+      else 
+      {
+        rxbuffer[rxBufferSize] = 0; // Terminate the incoming message with zero
+      }
+      
+      // Process message
       ParseIncomingMessage((char*)rxbuffer);
-    } else doneCommunicating = true;
+    } else doneCommunicating = true; // There are no messages in the queue
 
   } while(!doneCommunicating);
-  // done
-  modem.sleep();
-  lastCallHome = myRTC.get();
+
+  modem.sleep(); // Put modem to sleep
+  lastCallHome = myRTC.get(); // Update the last time of message exchange
 }
 
-void ParseIncomingMessage(char *msg) {
-  unsigned long tmp = (unsigned long)atol(msg);
-  if(!tmp) return; // atol failed
-  if(shutterInterval != tmp) {
+void ParseIncomingMessage(char *msg) 
+{
+  // Parse the message of the form "12345 12345" where the first number is the 
+  // shutter interval and the second number is the call-home interval
+  unsigned long tmp = (unsigned long)atol(msg); // Try to convert the first number
+  if(!tmp) return; // Either the first number is zero or conversion failed
+
+  // Updating the interval also causes the reset of the reference time
+  // Update only if the new value is different from the current one
+  if(shutterInterval != tmp) 
+  { 
     shutterInterval = tmp;
-    intervalChanged = true;
+    intervalChanged = true; // Instruct SetNextAlarm() to restart the countdown from the current moment
   }
+
+  // Find the first space in the string
+  // Important: if the incoming message starts with space, e.g. " 12345",
+  // then the first nubmer will be used both for shutter interval and for call home interval
   char *firstOccurrence = strchr(msg,(int)' ');
-  if(firstOccurrence) {
+  if(firstOccurrence) 
+  {
+    // If there is space in the string, try to parse the string that comes after that symbol
     firstOccurrence++;
     tmp = (unsigned long)atol(firstOccurrence);
-    if(tmp >= MIN_CALL_HOME_INTERVAL && tmp <= MAX_CALL_HOME_INTERVAL)
-      callHomeInterval = tmp;
+    
+    // Communication with home is a critical function
+    // Short periods will drain the battery, and long periods will cut off communication
+    // Update only if the received value is within a reasonable interval
+    if(tmp >= MIN_CALL_HOME_INTERVAL && tmp <= MAX_CALL_HOME_INTERVAL) callHomeInterval = tmp;
   }
 }
