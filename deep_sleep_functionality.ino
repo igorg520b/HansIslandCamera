@@ -64,6 +64,6 @@ void SleepWell()
 
 void WDT_Handler(void) 
 {
-  if(sleeping) ResetWD();          // Disable watchdog in sleep mode
+//  if(sleeping) ResetWD();          // Disable watchdog in sleep mode
   WDT->INTFLAG.bit.EW  = 1;        // Clear interrupt flag
 }
