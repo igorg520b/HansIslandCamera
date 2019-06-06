@@ -67,8 +67,8 @@ void loop()
   } 
   else if((nowTime + LENGTH_OF_DEEP_SLEEP) < alarmTime) 
   {
-   // Uncomment the next line for deep sleep 
-//    SleepWell();  // Deep sleep ~10 seconds
+    // Comment out the next line to disable deep sleep 
+    SleepWell();  // Deep sleep ~10 seconds
     ResetWD();    // Reset watchdog
   } 
 
