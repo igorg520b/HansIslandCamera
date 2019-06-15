@@ -20,7 +20,7 @@ DS3232RTC myRTC(false);
 bool            intervalChanged             = true;           // If received a command to change the interval
 bool            modemError                  = false;          // Indicates that the modem's library returned error
 unsigned long   shutterInterval             = 24UL*3600UL;    // Once a day
-unsigned long   callHomeInterval            = 120*60;         // Message exchange default interval
+unsigned long   callHomeInterval            = 5UL*3600UL;     // Message exchange default interval
 unsigned long   photoCounter                = 0;              // Count shutter triggers
 time_t          initializeTime, alarmTime;                    // Initial time at reset (does not change) and time of next alarm
 time_t          nowTime;
