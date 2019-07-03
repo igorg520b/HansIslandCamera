@@ -1,5 +1,3 @@
-bool sleeping = false;
-
 void InitializeWDT() 
 {
         // One-time initialization of watchdog timer.
@@ -52,13 +50,12 @@ void SleepWell()
   ResetWD();
   // WDT must be enabled earlier
   // Enable standby sleep mode (deepest sleep) and activate.
-  // Don't fully power down flash when in sleep
-  NVMCTRL->CTRLB.bit.SLEEPPRM = NVMCTRL_CTRLB_SLEEPPRM_DISABLED_Val;
+
+  SysTick->CTRL &= ~SysTick_CTRL_TICKINT_Msk; 
   SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-  sleeping = true;
   __DSB(); // Data sync to ensure outgoing memory accesses complete
   __WFI(); // Wait for interrupt (places device in sleep mode)
-  sleeping = false;
+  SysTick->CTRL |= SysTick_CTRL_TICKINT_Msk;
   // Code resumes here on wake (WDT early warning interrupt).
 }
 
