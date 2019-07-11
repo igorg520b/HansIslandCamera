@@ -3,6 +3,7 @@ char message[50];     // Outgoing message buffer
 
 void CallHomeNow()
 {
+  int parseResult = 0;
   lastCallHome = myRTC.get();
   
   int status = modem.begin(); // Wake up modem
@@ -21,7 +22,8 @@ void CallHomeNow()
   do
   {
     // Create the outbound message
-    snprintf(message, sizeof(message), "%lu %lu %lu %d", shutterInterval, callHomeInterval, photoCounter, myRTC.temperature()/4);
+    if(parseResult == 0) snprintf(message, sizeof(message), "%lu %lu %lu %d", shutterInterval, callHomeInterval, photoCounter, myRTC.temperature()/4);
+    else snprintf(message, sizeof(message), "ok");
 
     // Initial sending and receiving
     size_t rxBufferSize = sizeof(rxbuffer);
@@ -71,7 +73,7 @@ void CallHomeNow()
       }
       
       // Process message
-      ParseIncomingMessage((char*)rxbuffer);
+      parseResult = ParseIncomingMessage((char*)rxbuffer);
     } else doneCommunicating = true; // There are no messages in the queue
 
   } while(!doneCommunicating);
@@ -80,12 +82,18 @@ void CallHomeNow()
   lastCallHome = myRTC.get(); // Update the last time of message exchange
 }
 
-void ParseIncomingMessage(char *msg) 
+int ParseIncomingMessage(char *msg) 
 {
+  // Check if it's a 'go' message
+  if(msg[0] == 'g' && msg[1] == 'o')
+  {
+    TriggerShutterNow();
+    return 1; // indicate that a 'go' message is received
+  }
+  
   // Parse the message of the form "12345 12345" where the first number is the 
   // shutter interval and the second number is the call-home interval
   unsigned long tmp = (unsigned long)atol(msg); // Try to convert the first number
-  if(!tmp) return; // Either the first number is zero or conversion failed
 
   // Updating the interval also causes the reset of the reference time
   // Update only if the new value is different from the current one
@@ -110,4 +118,5 @@ void ParseIncomingMessage(char *msg)
     // Update only if the received value is within a reasonable interval
     if(tmp >= MIN_CALL_HOME_INTERVAL && tmp <= MAX_CALL_HOME_INTERVAL) callHomeInterval = tmp;
   }
+  return 0; // normal message is processed
 }

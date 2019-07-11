@@ -9,7 +9,7 @@
 
 // Intervals
 #define MAX_CALL_HOME_INTERVAL (7UL*24UL*3600UL)  // One week
-#define MIN_CALL_HOME_INTERVAL (15*60)            // 15 minutes
+#define MIN_CALL_HOME_INTERVAL (5*60)             // 5 minutes
 #define LENGTH_OF_DEEP_SLEEP (11)                 // Upper bound of deep sleep duration
 
 // Object instantiations
@@ -19,7 +19,7 @@ DS3232RTC myRTC(false);
 // Global variable delcarations
 bool            intervalChanged             = true;           // If received a command to change the interval
 bool            modemError                  = false;          // Indicates that the modem's library returned error
-unsigned long   shutterInterval             = 24UL*3600UL;    // Once a day
+unsigned long   shutterInterval             = 0;              // Off by default
 unsigned long   callHomeInterval            = 5UL*3600UL;     // Message exchange default interval
 unsigned long   photoCounter                = 0;              // Count shutter triggers
 time_t          initializeTime, alarmTime;                    // Initial time at reset (does not change) and time of next alarm
@@ -60,12 +60,12 @@ void loop()
   nowTime = myRTC.get();  // Get current time from external RTC
 
   // Trigger shutter if (1) alarm goes off or (2) missed the alarm or (3) interval changed
-  if (!digitalRead(RTC_INT_PIN) || nowTime >= alarmTime || intervalChanged)
+  if (shutterInterval > 0 && (!digitalRead(RTC_INT_PIN) || nowTime >= alarmTime || intervalChanged))
   {
     TriggerShutterNow();
     SetNextAlarm();
   } 
-  else if((nowTime + LENGTH_OF_DEEP_SLEEP) < alarmTime) 
+  else if(shutterInterval == 0 || (nowTime + LENGTH_OF_DEEP_SLEEP) < alarmTime) 
   {
     // Comment out the next line to disable deep sleep 
     SleepWell();  // Deep sleep ~10 seconds
@@ -105,7 +105,7 @@ bool ISBDCallback()
   nowTime = myRTC.get(); // Get current time from external RTC
 
   // Trigger shutter if (1) alarm goes off or (2) missed the alarm or (3) interval changed
-  if (!digitalRead(RTC_INT_PIN) || nowTime >= alarmTime || intervalChanged)
+  if (shutterInterval > 0 && (!digitalRead(RTC_INT_PIN) || nowTime >= alarmTime || intervalChanged))
   {
     TriggerShutterNow();
     SetNextAlarm();
