@@ -19,10 +19,10 @@ DS3232RTC myRTC(false);
 // Global variable delcarations
 bool            intervalChanged             = true;           // If received a command to change the interval
 bool            modemError                  = false;          // Indicates that the modem's library returned error
-unsigned long   shutterInterval             = 0;              // Off by default
+unsigned long   shutterInterval             = 10;             // Off by default
 unsigned long   callHomeInterval            = 5UL*3600UL;     // Message exchange default interval
 unsigned long   photoCounter                = 0;              // Count shutter triggers
-time_t          initializeTime, alarmTime;                    // Initial time at reset (does not change) and time of next alarm
+time_t          initializeTime, alarmTime=0;                  // Initial time at reset (does not change) and time of next alarm
 time_t          nowTime;
 time_t          lastCallHome, lastLEDSignal;
 
@@ -39,10 +39,14 @@ void setup()
 
   // Set up the external RTC
   myRTC.begin();
-  myRTC.setAlarm(ALM1_MATCH_DATE, 0, 0, 0, 1);  // Initialize the alarms to known values
-  myRTC.alarm(ALARM_1);                         // Clear the alarm flags
-  myRTC.alarmInterrupt(ALARM_1, false);         // Clear the alarm interrupt flags ***If this is set to true you could have a false trigger before you set the alarm***
-  myRTC.squareWave(SQWAVE_NONE);                // Ensure RTC alarm is not set to SQW
+  // initialize the alarms to known values, clear the alarm flags, clear the alarm interrupt flags
+  myRTC.setAlarm(ALM1_MATCH_DATE, 0, 0, 0, 1);
+  myRTC.setAlarm(ALM2_MATCH_DATE, 0, 0, 0, 1);
+  myRTC.alarm(ALARM_1);
+  myRTC.alarm(ALARM_2);
+  myRTC.alarmInterrupt(ALARM_1, false);
+  myRTC.alarmInterrupt(ALARM_2, false);
+  myRTC.squareWave(SQWAVE_NONE);
   lastLEDSignal = initializeTime = myRTC.get();
   
   // Watchdog and sleep timer
@@ -75,8 +79,7 @@ void loop()
   // Call home if needed
   if(nowTime >= (lastCallHome + callHomeInterval)) CallHomeNow();
 
-  // Indicate current status
-  SignalLED(false);
+//  SignalLED(false);
   ResetWD();  // Reset watchdog
 }
 
@@ -94,7 +97,7 @@ void SetNextAlarm()
     alarmTime = myRTC.get() + shutterInterval;
     intervalChanged = false; // the chage was just processed
   }
-  myRTC.setAlarm(ALM1_MATCH_DATE, second(alarmTime), minute(alarmTime), hour(alarmTime), day(alarmTime)); // Set alarm
+  myRTC.setAlarm(ALM1_MATCH_DAY, second(alarmTime), minute(alarmTime), hour(alarmTime), day(alarmTime)); // Set alarm
 }
 
 bool ISBDCallback() 
@@ -111,7 +114,7 @@ bool ISBDCallback()
     SetNextAlarm();
   }
    
-  SignalLED(true); // Signal that the modem is operating (rapid blinking)
+//  SignalLED(true); // Signal that the modem is operating (rapid blinking)
   ResetWD();  // Reset watchdog
   return true; // This callback must return true for modem to continue
 }
@@ -120,10 +123,13 @@ void TriggerShutterNow()
 {
   photoCounter++;
   digitalWrite(SHUTTER_TRIGGER_PIN, LOW);
+  digitalWrite(LED_BUILTIN, HIGH);
   delay(200); // This delay is specific to DigiSnap contorller
   digitalWrite(SHUTTER_TRIGGER_PIN, HIGH);
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
+/*
 void SignalLED(bool modemActive) 
 {
   // Blinking interval ~10 seconds  - Normal/sleep
@@ -140,6 +146,7 @@ void SignalLED(bool modemActive)
     lastLEDSignal = nowTime;
   } 
 }
+*/
 
 void Blink() 
 {
