@@ -19,7 +19,7 @@ DS3232RTC myRTC(false);
 // Global variable delcarations
 bool            intervalChanged             = true;           // If received a command to change the interval
 bool            modemError                  = false;          // Indicates that the modem's library returned error
-unsigned long   shutterInterval             = 10;             // Off by default
+unsigned long   shutterInterval             = 0;              // Off by default
 unsigned long   callHomeInterval            = 5UL*3600UL;     // Message exchange default interval
 unsigned long   photoCounter                = 0;              // Count shutter triggers
 time_t          initializeTime, alarmTime=0;                  // Initial time at reset (does not change) and time of next alarm
@@ -30,11 +30,11 @@ void setup()
 {
   Serial1.begin(19200);                     // RockBLOCK serial communications *** Can this be added to modem_operations.ino with a Serial1.end()? ***
 
-  pinMode(LED_BUILTIN, OUTPUT);             // ***LED_BUILTIN is the default way to control the LED on pin 13***
+//  pinMode(LED_BUILTIN, OUTPUT);             // ***LED_BUILTIN is the default way to control the LED on pin 13***
   pinMode(SHUTTER_TRIGGER_PIN, OUTPUT);     // Camera shutter
   pinMode(RTC_INT_PIN, INPUT_PULLUP);       // External RTC alarm signal
 
-  digitalWrite(LED_BUILTIN, LOW);           // Disable LED 
+//  digitalWrite(LED_BUILTIN, LOW);           // Disable LED 
   digitalWrite(SHUTTER_TRIGGER_PIN, HIGH);  // Set trigger to its rest state
 
   // Set up the external RTC
@@ -52,6 +52,8 @@ void setup()
   // Watchdog and sleep timer
   InitializeWDT();
   EnableWatchdog();
+
+  TriggerShutterNow();
 
   // Modem
   modem.setPowerProfile(IridiumSBD::USB_POWER_PROFILE);
@@ -123,10 +125,10 @@ void TriggerShutterNow()
 {
   photoCounter++;
   digitalWrite(SHUTTER_TRIGGER_PIN, LOW);
-  digitalWrite(LED_BUILTIN, HIGH);
+//  digitalWrite(LED_BUILTIN, HIGH);
   delay(200); // This delay is specific to DigiSnap contorller
   digitalWrite(SHUTTER_TRIGGER_PIN, HIGH);
-  digitalWrite(LED_BUILTIN, LOW);
+//  digitalWrite(LED_BUILTIN, LOW);
 }
 
 /*
